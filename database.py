@@ -28,34 +28,30 @@ def obtenerTotalesYDescuentos(desde_fecha, hasta_fecha, contribuyente=None):
     conn = get_connection()
     cursor = conn.cursor()
 
-    if contribuyente:
-        cursor.execute("""
-            SELECT 
-                COALESCE(SUM(CASE WHEN id_status = 0 THEN id_neto ELSE 0 END), 0) AS total_neto, 
-                COALESCE(SUM(CASE WHEN id_status = 0 THEN id_descuento ELSE 0 END), 0) AS total_descuento,
-                SUM(CASE WHEN id_status = 1 THEN 1 ELSE 0 END) AS cantidad_status_1
-            FROM TEARMO01
-            WHERE id_fecha BETWEEN %s AND %s
-            AND id_contribuyente LIKE %s
-        """, (desde_fecha, hasta_fecha, f"%{contribuyente}%"))
-    else:
-        cursor.execute("""
-            SELECT 
-                COALESCE(SUM(CASE WHEN id_status = 0 THEN id_neto ELSE 0 END), 0) AS total_neto, 
-                COALESCE(SUM(CASE WHEN id_status = 0 THEN id_descuento ELSE 0 END), 0) AS total_descuento,
-                SUM(CASE WHEN id_status = 1 THEN 1 ELSE 0 END) AS cantidad_status_1
-            FROM TEARMO01
-            WHERE id_fecha BETWEEN %s AND %s
-        """, (desde_fecha, hasta_fecha))
+    cursor.execute("""
+        SELECT 
+            SUM(vt_efectivo) AS efectivo,
+            SUM(vt_tarjeta) AS tarjeta,
+            SUM(vt_credito) AS credito,
+            SUM(vt_totalg) AS total_con_iva,
+            SUM(vt_sub_total) AS total_sin_iva,
+            SUM(vt_impuesto) AS iva
+        FROM VEARMA01
+        WHERE vt_bandera != '1' AND vt_fechat BETWEEN %s AND %s
+    """, (desde_fecha, hasta_fecha))
 
     resultado = cursor.fetchone()
     conn.close()
 
     return {
-        "total_neto": float(resultado[0]),
-        "total_descuento": float(resultado[1]),
-        "cantidad_status_1": int(resultado[2])
+        "efectivo": float(resultado[0] or 0),
+        "tarjeta": float(resultado[1] or 0),
+        "credito": float(resultado[2] or 0),
+        "total_con_iva": float(resultado[3] or 0),
+        "total_sin_iva": float(resultado[4] or 0),
+        "iva": float(resultado[5] or 0)
     }
+
 
 
 def obtenerRecibosConIntervaloYContribuyente(desde_fecha, hasta_fecha, contribuyente):
